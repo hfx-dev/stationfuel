@@ -1,0 +1,1904 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>StationFuel — Trouvez le meilleur prix près de vous</title>
+<!-- PWA -->
+<meta name="theme-color" content="#15803d">
+<meta name="description" content="Trouvez le carburant le moins cher près de vous en temps réel.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="StationFuel">
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet MarkerCluster -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root, [data-theme="light"] {
+  --text-xs:   clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+  --text-sm:   clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+  --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+  --text-lg:   clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+  --text-xl:   clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem;
+  --space-4: 1rem;    --space-5: 1.25rem; --space-6: 1.5rem;
+  --space-8: 2rem;    --space-10: 2.5rem; --space-12: 3rem;
+  --font-display: 'Space Grotesk', 'Helvetica Neue', sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --color-bg:             #f5f6f7;
+  --color-surface:        #ffffff;
+  --color-surface-2:      #f9fafb;
+  --color-surface-offset: #f0f1f3;
+  --color-divider:        #e5e7eb;
+  --color-border:         #d1d5db;
+  --color-text:           #111827;
+  --color-text-muted:     #6b7280;
+  --color-text-faint:     #9ca3af;
+  --color-text-inverse:   #ffffff;
+  --color-primary:          #15803d;
+  --color-primary-hover:    #166534;
+  --color-primary-active:   #14532d;
+  --color-primary-highlight:#dcfce7;
+  --color-warning:         #d97706;
+  --color-error:           #dc2626;
+  --color-success:         #15803d;
+  --color-orange:          #ea580c;
+  --color-blue:            #2563eb;
+  --radius-sm: 0.375rem; --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;  --radius-xl: 1rem;
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.08);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.12);
+  --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+[data-theme="dark"] {
+  --color-bg:             #0f1117;
+  --color-surface:        #161b22;
+  --color-surface-2:      #1c2128;
+  --color-surface-offset: #1a2033;
+  --color-divider:        #21262d;
+  --color-border:         #30363d;
+  --color-text:           #e6edf3;
+  --color-text-muted:     #8b949e;
+  --color-text-faint:     #484f58;
+  --color-text-inverse:   #0d1117;
+  --color-primary:        #3fb950;
+  --color-primary-hover:  #2ea043;
+  --color-primary-active: #238636;
+  --color-primary-highlight:#0d2818;
+  --color-warning:        #d29922;
+  --color-error:          #f85149;
+  --color-success:        #3fb950;
+  --color-orange:         #f0883e;
+  --color-blue:           #58a6ff;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 12px 32px rgb(0 0 0 / 0.5);
+}
+/* ============================================================
+   BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-font-smoothing: antialiased; }
+body {
+  min-height: 100dvh; font-family: var(--font-body);
+  font-size: var(--text-base); color: var(--color-text);
+  background: var(--color-bg); overflow: hidden;
+}
+button { cursor: pointer; background: none; border: none; font: inherit; color: inherit; }
+input, select { font: inherit; color: inherit; }
+a, button, input, select { transition: color var(--transition), background var(--transition), border-color var(--transition), box-shadow var(--transition); }
+:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; border-radius: var(--radius-sm); }
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.app {
+  display: grid;
+  grid-template-rows: 56px 1fr;
+  grid-template-columns: 380px 1fr;
+  height: 100dvh;
+  grid-template-areas: "header header" "sidebar map";
+}
+/* ============================================================
+   HEADER
+   ============================================================ */
+.header {
+  grid-area: header;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-divider);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--space-6);
+  box-shadow: var(--shadow-sm); z-index: 100;
+}
+.logo {
+  display: flex; align-items: center; gap: var(--space-2);
+  font-family: var(--font-display); font-weight: 700;
+  font-size: var(--text-lg); color: var(--color-text); text-decoration: none;
+}
+.logo svg { color: var(--color-primary); }
+.header-right { display: flex; align-items: center; gap: var(--space-3); }
+.btn-icon {
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-md); color: var(--color-text-muted);
+}
+.btn-icon:hover { background: var(--color-surface-offset); color: var(--color-text); }
+.badge-api {
+  background: var(--color-primary-highlight); color: var(--color-primary);
+  font-size: var(--text-xs); font-weight: 600; padding: 2px var(--space-2);
+  border-radius: var(--radius-full); letter-spacing: 0.03em;
+}
+.badge-demo {
+  background: #fef3c7; color: #92400e;
+  font-size: var(--text-xs); font-weight: 700; padding: 2px var(--space-2);
+  border-radius: var(--radius-full); letter-spacing: 0.03em;
+  display: none;
+}
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+.sidebar {
+  grid-area: sidebar;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-divider);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.sidebar-top {
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid var(--color-divider);
+  flex-shrink: 0;
+}
+.search-wrapper { position: relative; margin-bottom: 8px; }
+/* Compact inline rows for filter controls */
+.compact-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+/* Target both <i> (before Lucide runs) and <svg> (after Lucide replaces it) */
+.search-wrapper i, .search-wrapper > svg {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  width: 16px; height: 16px; color: var(--color-text-muted); pointer-events: none;
+  flex-shrink: 0;
+}
+.search-input {
+  width: 100%; padding: var(--space-3) var(--space-3) var(--space-3) 38px;
+  background: var(--color-surface-2); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); font-size: var(--text-sm); color: var(--color-text);
+}
+.search-input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(21,128,61,0.12); }
+.search-input::placeholder { color: var(--color-text-faint); }
+.filter-section { margin-bottom: 6px; }
+.filter-label {
+  font-size: 9px; font-weight: 700; color: var(--color-text-muted);
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; display: block;
+}
+/* Radius */
+.radius-tabs {
+  flex: 1; display: flex; background: var(--color-surface-offset);
+  border-radius: var(--radius-md); padding: 2px; gap: 2px;
+}
+.radius-tab {
+  flex: 1; padding: 3px 4px; text-align: center;
+  border-radius: calc(var(--radius-md) - 2px); font-size: 10px;
+  font-weight: 600; color: var(--color-text-muted); cursor: pointer;
+  transition: all var(--transition); white-space: nowrap;
+}
+.radius-tab.active { background: var(--color-surface); color: var(--color-text); box-shadow: var(--shadow-sm); }
+/* Fuel chips */
+.filter-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.chip {
+  padding: 3px 9px; border-radius: var(--radius-full);
+  font-size: 10px; font-weight: 600; cursor: pointer;
+  border: 1.5px solid var(--color-border); background: var(--color-surface-2);
+  color: var(--color-text-muted); user-select: none; transition: all var(--transition);
+}
+.chip:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.chip.active { background: var(--color-primary); border-color: var(--color-primary); color: white; }
+/* Price range */
+.range-wrapper {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--color-surface-2); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); padding: 5px 10px; flex: 1;
+}
+.range-wrapper input[type="range"] { flex: 1; height: 3px; accent-color: var(--color-primary); }
+.range-value { font-size: 11px; font-weight: 700; color: var(--color-primary); min-width: 36px; text-align: right; white-space: nowrap; }
+/* Sort */
+.sort-select {
+  padding: 5px 26px 5px 8px; flex-shrink: 0;
+  background: var(--color-surface-2); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); font-size: 10px; font-weight: 600; cursor: pointer;
+  appearance: none; -webkit-appearance: none; color: var(--color-text);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 6px center;
+}
+.sort-select:focus { outline: none; border-color: var(--color-primary); }
+/* Results */
+.results-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: var(--space-4) var(--space-5) var(--space-3); flex-shrink: 0;
+}
+.results-count { font-size: var(--text-sm); color: var(--color-text-muted); font-weight: 500; }
+.results-count strong { color: var(--color-text); }
+.station-list {
+  overflow-y: auto; flex: 1; min-height: 180px; /* always shows at least ~2 cards */
+  padding: 0 var(--space-3) var(--space-4);
+  scrollbar-width: thin; scrollbar-color: var(--color-border) transparent;
+}
+/* Station Card */
+.station-card {
+  padding: var(--space-3); background: var(--color-surface-2);
+  border: 1px solid var(--color-divider); border-radius: var(--radius-lg);
+  margin-bottom: 6px; cursor: pointer; position: relative; overflow: hidden;
+  transition: box-shadow var(--transition), border-color var(--transition);
+}
+.station-card:hover { box-shadow: var(--shadow-md); border-color: var(--color-border); }
+.station-card.selected { border-color: var(--color-primary); box-shadow: 0 0 0 2px rgba(21,128,61,0.2); background: var(--color-surface); }
+.station-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-2); }
+.station-name { font-family: var(--font-display); font-weight: 600; font-size: var(--text-sm); line-height: 1.2; }
+.station-brand { font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 2px; }
+.price-badge-main {
+  background: var(--color-primary); color: white; border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-2); font-family: var(--font-display);
+  font-weight: 700; font-size: var(--text-sm); white-space: nowrap;
+}
+.price-badge-main.expensive { background: var(--color-orange); }
+.price-badge-main.very-expensive { background: var(--color-error); }
+.station-addr {
+  font-size: var(--text-xs); color: var(--color-text-muted);
+  display: flex; align-items: flex-start; gap: var(--space-1); margin-bottom: var(--space-2);
+}
+.fuel-prices { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: var(--space-1); }
+.fuel-tag {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--color-surface-offset); border-radius: var(--radius-sm);
+  padding: 3px 8px; font-size: var(--text-xs); color: var(--color-text-muted);
+}
+.fuel-tag strong { color: var(--color-text); font-weight: 600; }
+.fuel-tag.highlighted { background: var(--color-primary-highlight); color: var(--color-primary); }
+.fuel-tag.highlighted strong { color: var(--color-primary); }
+/* Freshness indicator */
+.freshness {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; padding: 2px 7px; border-radius: var(--radius-full);
+  border: 1px solid; white-space: nowrap;
+}
+.freshness.fresh   { border-color: #bbf7d0; color: #15803d; background: #f0fdf4; }
+.freshness.recent  { border-color: #fed7aa; color: #c2410c; background: #fff7ed; }
+.freshness.old     { border-color: #fecaca; color: #dc2626; background: #fef2f2; }
+[data-theme="dark"] .freshness.fresh  { border-color: #166534; color: #4ade80; background: #052e16; }
+[data-theme="dark"] .freshness.recent { border-color: #7c2d12; color: #fb923c; background: #431407; }
+[data-theme="dark"] .freshness.old    { border-color: #7f1d1d; color: #f87171; background: #450a0a; }
+.station-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: var(--space-2); padding-top: var(--space-2);
+  border-top: 1px solid var(--color-divider); flex-wrap: wrap; gap: var(--space-1);
+}
+.station-dist { display: flex; align-items: center; gap: 4px; font-size: var(--text-xs); color: var(--color-text-muted); }
+.station-status { font-size: var(--text-xs); font-weight: 600; padding: 2px 8px; border-radius: var(--radius-full); }
+.station-status.open   { background: #dcfce7; color: #15803d; }
+.station-status.closed { background: #fee2e2; color: #dc2626; }
+.station-status.h24    { background: #dbeafe; color: #2563eb; }
+[data-theme="dark"] .station-status.open   { background: #052e16; color: #4ade80; }
+[data-theme="dark"] .station-status.closed { background: #450a0a; color: #f87171; }
+[data-theme="dark"] .station-status.h24    { background: #172554; color: #93c5fd; }
+.best-price-badge {
+  position: absolute; top: var(--space-3); right: var(--space-3);
+  background: var(--color-warning); color: white;
+  font-size: 10px; font-weight: 700; padding: 2px 6px;
+  border-radius: var(--radius-full); letter-spacing: 0.05em; display: none;
+}
+.station-card.best-price .best-price-badge { display: block; }
+/* Skeleton */
+.skeleton-card {
+  padding: var(--space-4); background: var(--color-surface-2);
+  border: 1px solid var(--color-divider); border-radius: var(--radius-lg); margin-bottom: var(--space-2);
+}
+@keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+.skeleton {
+  background: linear-gradient(90deg, var(--color-surface-offset) 25%, var(--color-surface-2) 50%, var(--color-surface-offset) 75%);
+  background-size: 200% 100%; animation: shimmer 1.5s ease-in-out infinite; border-radius: var(--radius-sm);
+}
+.sk-line { height: 14px; margin-bottom: var(--space-2); }
+.sk-sm{width:40%} .sk-md{width:65%} .sk-full{width:100%}
+/* Empty/Error */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; padding: var(--space-12) var(--space-8); color: var(--color-text-muted);
+}
+.empty-state h3 { font-size: var(--text-base); color: var(--color-text); margin-bottom: var(--space-2); }
+.empty-state p { font-size: var(--text-sm); max-width: 28ch; }
+.error-state {
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; padding: var(--space-8) var(--space-6);
+}
+.error-icon { width: 44px; height: 44px; color: var(--color-error); margin-bottom: var(--space-4); }
+.error-state h3 { font-size: var(--text-sm); color: var(--color-error); font-weight: 600; margin-bottom: var(--space-2); }
+.error-state p { font-size: var(--text-xs); color: var(--color-text-muted); margin-bottom: var(--space-4); max-width: 26ch; }
+.btn-retry {
+  display: flex; align-items: center; gap: var(--space-2);
+  background: var(--color-error); color: white; border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4); font-size: var(--text-sm); font-weight: 600;
+  transition: opacity var(--transition);
+}
+.btn-retry:hover { opacity: 0.85; }
+.btn-demo-fallback {
+  font-size: var(--text-xs); color: var(--color-text-faint); text-decoration: underline;
+  margin-top: var(--space-2); cursor: pointer; background: none; border: none;
+}
+.btn-demo-fallback:hover { color: var(--color-text-muted); }
+/* Demo banner */
+.demo-banner {
+  background: #fef3c7; border: 1px solid #fbbf24; border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4); font-size: var(--text-xs); color: #92400e;
+  margin: 0 var(--space-3) var(--space-3); display: none;
+}
+[data-theme="dark"] .demo-banner { background: #1c1500; border-color: #713f12; color: #fcd34d; }
+/* ============================================================
+   MAP
+   ============================================================ */
+.map-area { grid-area: map; position: relative; overflow: hidden; }
+#map { width: 100%; height: 100%; z-index: 1; }
+.map-overlay {
+  position: absolute; top: var(--space-4); right: var(--space-4);
+  z-index: 10; display: flex; flex-direction: column; gap: var(--space-2);
+}
+.locate-btn {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); padding: var(--space-2) var(--space-3);
+  box-shadow: var(--shadow-md); display: flex; align-items: center;
+  gap: var(--space-2); font-size: var(--text-sm); font-weight: 600;
+}
+.locate-btn:hover { background: var(--color-primary); color: white; border-color: var(--color-primary); }
+.source-tag {
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-md); padding: var(--space-2) var(--space-3);
+  box-shadow: var(--shadow-sm); font-size: var(--text-xs); color: var(--color-text-muted);
+  display: flex; align-items: center; gap: var(--space-1);
+}
+/* Leaflet popup */
+.leaflet-popup-content-wrapper {
+  border-radius: var(--radius-lg) !important; box-shadow: var(--shadow-lg) !important;
+  background: var(--color-surface) !important; color: var(--color-text) !important;
+  border: 1px solid var(--color-border);
+}
+.leaflet-popup-tip { background: var(--color-surface) !important; }
+.popup-content { padding: 4px; min-width: 180px; }
+.popup-name { font-family: var(--font-display); font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.popup-addr { font-size: 12px; color: var(--color-text-muted); margin-bottom: 8px; }
+.popup-prices { display: flex; flex-wrap: wrap; gap: 4px; }
+.popup-price-tag { background: var(--color-surface-offset); border-radius: var(--radius-sm); padding: 2px 8px; font-size: 11px; color: var(--color-text-muted); }
+.popup-price-tag strong { color: var(--color-text); font-weight: 600; }
+.popup-nav-btn {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 8px;
+  background: var(--color-primary); color: white !important; border-radius: var(--radius-md);
+  padding: 5px 12px; font-size: 11px; font-weight: 600; text-decoration: none !important;
+  transition: opacity var(--transition); cursor: pointer;
+}
+.popup-nav-btn:hover { opacity: 0.82; }
+/* ── Pin-bubble map markers ───────────────────────────────── */
+.map-pin { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform .15s; }
+.map-pin:hover { transform: scale(1.12) translateY(-2px); }
+.map-pin.selected { transform: scale(1.25) translateY(-3px); z-index: 999 !important; }
+.pin-bubble {
+  font-family: var(--font-display); font-weight: 800; font-size: 12px;
+  padding: 5px 10px; border-radius: 12px;
+  border: 2.5px solid white; box-shadow: 0 4px 14px rgba(0,0,0,.28);
+  white-space: nowrap; color: white; line-height: 1;
+}
+.pin-tail {
+  width: 0; height: 0; margin-top: -1px;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  filter: drop-shadow(0 3px 2px rgba(0,0,0,.18));
+}
+/* Colors driven by data-color attribute set in JS */
+.map-pin[data-color="green"] .pin-bubble { background: #15803d; }
+.map-pin[data-color="green"] .pin-tail   { border-top: 8px solid #15803d; }
+.map-pin[data-color="orange"] .pin-bubble { background: #d97706; }
+.map-pin[data-color="orange"] .pin-tail   { border-top: 8px solid #d97706; }
+.map-pin[data-color="red"] .pin-bubble { background: #dc2626; }
+.map-pin[data-color="red"] .pin-tail   { border-top: 8px solid #dc2626; }
+/* Selected ring */
+.map-pin.selected .pin-bubble { box-shadow: 0 0 0 3px white, 0 0 0 5.5px currentColor, 0 6px 18px rgba(0,0,0,.35); }
+/* MarkerCluster customization */
+.marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
+  background: rgba(21,128,61,0.15) !important;
+}
+.marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+  background: var(--color-primary) !important; color: white !important;
+  font-family: var(--font-display); font-weight: 700; font-size: 11px;
+}
+/* Loading spinner */
+.spinner {
+  width: 18px; height: 18px; border: 2px solid var(--color-divider);
+  border-top-color: var(--color-primary); border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+/* ── Zone drawing tools ──────────────────────────────────────── */
+.zone-mode-toggle {
+  display: flex; background: var(--color-surface-offset);
+  border-radius: var(--radius-md); padding: 2px; gap: 2px; margin-bottom: var(--space-3);
+}
+.zone-mode-btn {
+  padding: 3px 8px; border-radius: calc(var(--radius-md) - 2px);
+  font-size: 10px; font-weight: 600; cursor: pointer; text-align: center; white-space: nowrap;
+  color: var(--color-text-muted); display: flex; align-items: center; justify-content: center; gap: 3px;
+  transition: all var(--transition);
+}
+.zone-mode-btn i, .zone-mode-btn svg { width: 11px; height: 11px; flex-shrink: 0; }
+.zone-mode-btn.active { background: var(--color-surface); color: var(--color-text); box-shadow: var(--shadow-sm); }
+.draw-mode-btns { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-2); }
+.draw-mode-btn {
+  flex: 1; padding: var(--space-2) var(--space-2); border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border); background: var(--color-surface-2);
+  font-size: var(--text-xs); font-weight: 700; cursor: pointer; color: var(--color-text-muted);
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  transition: all var(--transition); min-width: 0; white-space: nowrap;
+}
+.draw-mode-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.draw-mode-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: white; }
+.draw-hint {
+  font-size: 11px; color: var(--color-text-faint); text-align: center;
+  padding: var(--space-2) 0; display: none;
+}
+.draw-hint.visible { display: block; }
+/* L-shape rotation picker */
+.l-rotation-row {
+  display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); display: none;
+}
+.l-rotation-row.visible { display: flex; }
+.l-rot-label { font-size: 11px; color: var(--color-text-muted); font-weight: 600; white-space: nowrap; }
+.l-rot-btns { display: flex; gap: 4px; }
+.l-rot-btn {
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-border); background: var(--color-surface-2);
+  font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition); line-height: 1;
+}
+.l-rot-btn:hover { border-color: var(--color-primary); background: var(--color-primary-highlight); }
+.l-rot-btn.active { background: var(--color-primary); border-color: var(--color-primary); color: white; filter: invert(1); }
+/* Map draw toolbar (floats on map, above the locate button) */
+.draw-toolbar {
+  position: absolute; top: var(--space-4); left: 50%; transform: translateX(-50%);
+  z-index: 20; background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+  padding: var(--space-2) var(--space-3); display: none;
+  align-items: center; gap: var(--space-3); font-size: var(--text-xs);
+  white-space: nowrap;
+}
+.draw-toolbar.visible { display: flex; }
+.draw-toolbar-hint { color: var(--color-text-muted); font-weight: 500; }
+.draw-toolbar-hint strong { color: var(--color-text); }
+.btn-clear-zone {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--color-error); color: white; border-radius: var(--radius-md);
+  padding: 5px 10px; font-size: var(--text-xs); font-weight: 700;
+  transition: opacity var(--transition);
+}
+.btn-clear-zone:hover { opacity: 0.85; }
+/* Drawing cursor on map */
+.map-area.draw-active #map { cursor: crosshair !important; }
+.map-area.draw-active .leaflet-container { cursor: crosshair !important; }
+/* ============================================================
+   MOBILE BOTTOM-SHEET
+   ============================================================ */
+/* Handle bar (hidden on desktop) */
+.mobile-handle {
+  display: none; justify-content: center; align-items: center;
+  padding: 10px 0 6px; cursor: pointer; flex-shrink: 0;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.mobile-handle-pill {
+  width: 38px; height: 4px;
+  background: var(--color-border); border-radius: 2px;
+  transition: background var(--transition);
+}
+.mobile-handle:hover .mobile-handle-pill { background: var(--color-text-muted); }
+
+/* Floating filter toggle button (mobile only, hidden on desktop) */
+.fab-filters {
+  display: none;
+  position: fixed; right: 16px; bottom: 86px; z-index: 600;
+  background: var(--color-primary); color: white;
+  border-radius: var(--radius-full); padding: 10px 16px;
+  box-shadow: 0 4px 18px rgba(21,128,61,0.45);
+  font-size: 13px; font-weight: 700; align-items: center; gap: 6px;
+  border: none; cursor: pointer; transition: all var(--transition);
+}
+.fab-filters:active { transform: scale(0.95); }
+
+@media (max-width: 768px) {
+  /* Map takes full screen */
+  .app {
+    grid-template-areas: "header" "map";
+    grid-template-rows: 56px 1fr;
+    grid-template-columns: 1fr;
+  }
+
+  /* Header tweaks */
+  .header { padding: 0 var(--space-4); }
+  .logo span { display: none; } /* hide text logo on small screens, keep icon */
+
+  /* Sidebar becomes a fixed bottom sheet */
+  .sidebar {
+    position: fixed !important;
+    left: 0; right: 0; bottom: 0;
+    width: 100%; z-index: 500;
+    height: 84dvh; max-height: 84dvh;
+    border-radius: 20px 20px 0 0;
+    border-right: none;
+    border-top: 1px solid var(--color-divider);
+    box-shadow: 0 -8px 40px rgba(0,0,0,0.2);
+    display: flex !important; flex-direction: column;
+    will-change: transform;
+    transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+    /* safe area inset for notched phones */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  /* Sheet states driven by data-sheet attribute */
+  .sidebar[data-sheet="peek"] { transform: translateY(calc(100% - 64px)); }
+  .sidebar[data-sheet="half"] { transform: translateY(42%); }
+  .sidebar[data-sheet="full"] { transform: translateY(0); }
+
+  /* Show the handle on mobile */
+  .mobile-handle { display: flex; }
+
+  /* FAB visible on mobile */
+  .fab-filters { display: flex; }
+
+  /* Sidebar-top becomes scrollable when in half/full state */
+  .sidebar-top {
+    flex-shrink: 0;
+    max-height: 38vh;
+    overflow-y: auto;
+  }
+  .station-list { flex: 1; min-height: 0; }
+
+  /* Map overlay: push buttons above the peek bar */
+  .map-overlay {
+    top: auto; bottom: 80px;
+    flex-direction: row-reverse; gap: 8px;
+  }
+  .locate-btn { order: 1; }
+  .source-tag { display: none; }  /* hide on mobile to save space */
+
+  /* Slightly larger touch targets */
+  .chip { padding: 5px 11px; font-size: 11px; }
+  .radius-tab { padding: 5px 4px; font-size: 11px; }
+  .zone-mode-btn { padding: 5px 10px; font-size: 11px; }
+  .station-card { padding: var(--space-3); }
+
+  /* Prevent map interactions bleeding through sheet */
+  .sidebar { overscroll-behavior: contain; }
+  .station-list { overscroll-behavior: contain; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- HEADER -->
+  <header class="header">
+    <a href="#" class="logo">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect x="4" y="6" width="14" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
+        <path d="M4 12h14" stroke="currentColor" stroke-width="2"/>
+        <path d="M18 10l4 2v6l-4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M8 9v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M11 9v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      StationFuel
+    </a>
+    <div class="header-right">
+      <span class="badge-api">Open Data</span>
+      <span class="badge-demo" id="badge-demo">Mode démo</span>
+      <div id="api-status" style="display:flex;align-items:center;gap:6px;font-size:var(--text-xs);color:var(--color-text-muted);">
+        <div class="spinner"></div>
+        Connexion…
+      </div>
+      <button class="btn-icon" id="theme-toggle" aria-label="Changer le thème">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- SIDEBAR (desktop) / BOTTOM SHEET (mobile) -->
+  <aside class="sidebar" id="sidebar" data-sheet="peek">
+    <!-- Mobile drag handle -->
+    <div class="mobile-handle" id="mobile-handle" role="button" aria-label="Ouvrir le panneau des résultats">
+      <div class="mobile-handle-pill"></div>
+    </div>
+    <div class="sidebar-top">
+      <!-- Search -->
+      <div class="search-wrapper">
+        <i data-lucide="search"></i>
+        <input type="text" class="search-input" placeholder="Ville, code postal, adresse…" id="search-input" />
+      </div>
+      <!-- Zone mode + radius on same row -->
+      <div class="compact-row">
+        <div class="zone-mode-toggle">
+          <button class="zone-mode-btn active" id="zone-mode-radius">
+            <i data-lucide="circle-dot"></i> Rayon
+          </button>
+          <button class="zone-mode-btn" id="zone-mode-custom">
+            <i data-lucide="pen-line"></i> Zone
+          </button>
+        </div>
+        <div class="radius-tabs" id="radius-tabs">
+          <div class="radius-tab" data-radius="1">1 km</div>
+          <div class="radius-tab active" data-radius="5">5 km</div>
+          <div class="radius-tab" data-radius="10">10 km</div>
+          <div class="radius-tab" data-radius="20">20 km</div>
+        </div>
+      </div>
+      <!-- Custom zone draw tools (shown in custom mode) -->
+      <div id="custom-zone-panel" style="display:none; margin-bottom:6px;">
+        <div class="draw-mode-btns">
+          <button class="draw-mode-btn active" data-draw="circle">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/></svg>
+            Cercle
+          </button>
+          <button class="draw-mode-btn" data-draw="rectangle">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="5" width="18" height="14" rx="1"/></svg>
+            Rectangle
+          </button>
+          <button class="draw-mode-btn" data-draw="l-shape">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 4v16h14" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Forme L
+          </button>
+        </div>
+        <div class="l-rotation-row" id="l-rotation-row">
+          <span class="l-rot-label">Orientation :</span>
+          <div class="l-rot-btns">
+            <button class="l-rot-btn active" data-lrot="0"   title="Coin bas-gauche">└</button>
+            <button class="l-rot-btn"         data-lrot="90"  title="Coin bas-droite">┘</button>
+            <button class="l-rot-btn"         data-lrot="180" title="Coin haut-droite">┐</button>
+            <button class="l-rot-btn"         data-lrot="270" title="Coin haut-gauche">┌</button>
+          </div>
+        </div>
+        <p class="draw-hint visible" id="draw-hint">Cliquez-glissez sur la carte pour dessiner</p>
+      </div>
+      <!-- Fuel chips with "Tous" -->
+      <div class="filter-row" id="fuel-chips">
+        <div class="chip active" data-fuel="all">Tous</div>
+        <div class="chip" data-fuel="SP95">SP95</div>
+        <div class="chip" data-fuel="SP98">SP98</div>
+        <div class="chip" data-fuel="Gazole">Gazole</div>
+        <div class="chip" data-fuel="E10">E10</div>
+        <div class="chip" data-fuel="E85">E85</div>
+        <div class="chip" data-fuel="GPLc">GPL</div>
+      </div>
+      <!-- Price slider + sort on same row -->
+      <div class="compact-row" style="margin-bottom:0;">
+        <div class="range-wrapper">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;color:var(--color-text-muted)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;color:var(--color-text-muted)"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <input type="range" id="price-range" min="1.4" max="2.5" step="0.01" value="2.5" />
+          <span class="range-value" id="range-display">2.50</span>
+        </div>
+        <select class="sort-select" id="sort-select">
+          <option value="price">↑ Prix</option>
+          <option value="price-desc">↓ Prix</option>
+          <option value="distance">Distance</option>
+          <option value="freshness">Fraîcheur</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="results-header">
+      <span class="results-count" id="results-count"><strong>—</strong> stations</span>
+      <div id="loading-indicator" style="display:none;"><div class="spinner"></div></div>
+    </div>
+
+    <!-- Demo mode banner -->
+    <div class="demo-banner" id="demo-banner">
+      ⚠️ <strong>Mode démo</strong> — Données fictives (API indisponible ou hors France).
+      <button onclick="retryRealApi()" style="margin-left:6px;text-decoration:underline;font-size:inherit;color:inherit;background:none;border:none;cursor:pointer;">Réessayer</button>
+    </div>
+
+    <div class="station-list" id="station-list">
+      <div class="skeleton-card"><div class="skeleton sk-line sk-md"></div><div class="skeleton sk-line sk-full"></div><div class="skeleton sk-line sk-sm"></div></div>
+      <div class="skeleton-card"><div class="skeleton sk-line sk-md"></div><div class="skeleton sk-line sk-full"></div><div class="skeleton sk-line sk-sm"></div></div>
+      <div class="skeleton-card"><div class="skeleton sk-line sk-md"></div><div class="skeleton sk-line sk-full"></div><div class="skeleton sk-line sk-sm"></div></div>
+    </div>
+  </aside>
+
+  <!-- Floating filter button (mobile only) -->
+  <button class="fab-filters" id="fab-filters" aria-label="Filtres et résultats">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+    <span id="fab-count">…</span>
+  </button>
+
+  <!-- MAP -->
+  <div class="map-area" id="map-area">
+    <div id="map"></div>
+    <!-- Floating toolbar shown while drawing / zone active -->
+    <div class="draw-toolbar" id="draw-toolbar">
+      <span class="draw-toolbar-hint" id="draw-toolbar-hint">
+        <strong>Cercle</strong> — Cliquez et glissez pour dessiner
+      </span>
+      <button class="btn-clear-zone" id="btn-clear-zone">✕ Effacer la zone</button>
+    </div>
+    <div class="map-overlay">
+      <button class="locate-btn" id="locate-btn">
+        <i data-lucide="crosshair" style="width:16px;height:16px;"></i>
+        Ma position
+      </button>
+      <div class="source-tag">
+        <i data-lucide="database" style="width:12px;height:12px;"></i>
+        data.economie.gouv.fr
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============================================================
+   CONFIG & CONSTANTS
+   ============================================================ */
+const API_URL = 'https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records';
+const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
+
+const FUEL_MAP = {
+  SP95:  { prix: 'sp95_prix',  maj: 'sp95_maj'  },
+  SP98:  { prix: 'sp98_prix',  maj: 'sp98_maj'  },
+  Gazole:{ prix: 'gazole_prix',maj: 'gazole_maj' },
+  E10:   { prix: 'e10_prix',   maj: 'e10_maj'   },
+  E85:   { prix: 'e85_prix',   maj: 'e85_maj'   },
+  GPLc:  { prix: 'gplc_prix',  maj: 'gplc_maj'  },
+};
+
+// Brand detection — order matters: more specific patterns first
+const BRAND_RE = [
+  // ── Pétroliers internationaux ──────────────────────────────────
+  ['TotalEnergies',  /total.?energ/i],
+  ['Total',          /\btotal\b/i],
+  ['Shell',          /\bshell\b/i],
+  ['BP',             /\bbp\b/i],
+  ['Esso',           /\besso\b/i],
+  ['Agip / ENI',     /\b(agip|eni)\b/i],
+  ['Q8',             /\bq8\b/i],
+  ['Dyneff',         /\bdyneff\b/i],
+  ['Tamoil',         /\btamoil\b/i],
+  ['Repsol',         /\brepsol\b/i],
+  ['Lukoil',         /\blukoil\b/i],
+  ['Rubis',          /\brubis\b/i],
+  ['Avia',           /\bavia\b/i],
+  ['Gulf',           /\bgulf\b/i],
+  ['Texaco',         /\btexaco\b/i],
+  ['Chevron',        /\bchevron\b/i],
+  // ── Grande distribution française ─────────────────────────────
+  ['E.Leclerc',      /leclerc/i],
+  ['Intermarché',    /intermarch/i],
+  ['Carrefour',      /carrefour/i],
+  ['Auchan',         /\bauchan\b/i],
+  ['Géant Casino',   /g[eé]ant.?casino/i],
+  ['Casino',         /\bcasino\b/i],
+  ['Super U',        /super.?u\b/i],
+  ['Hyper U',        /hyper.?u\b/i],
+  ['Système U',      /syst[eè]me.?u/i],
+  ['Lidl',           /\blidl\b/i],
+  ['Netto',          /\bnetto\b/i],
+  ['Cora',           /\bcora\b/i],
+  ['Bi1',            /\bbi1\b/i],
+  ['Colruyt',        /\bcolruyt\b/i],
+  ['Penny',          /\bpenny\b/i],
+  ['Leader Price',   /leader.?price/i],
+  ['Monoprix',       /\bmonoprix\b/i],
+  ['Franprix',       /\bfranprix\b/i],
+  ['G20',            /\bg20\b/i],
+  // ── Autoroutes ─────────────────────────────────────────────────
+  ['Area',           /\barea\b/i],
+  ['Autogrill',      /\bautogrill\b/i],
+  ['Arche',          /\barche\b/i],
+  ['Sanef',          /\bsanef\b/i],
+  ['Vinci',          /\bvinci\b/i],
+  // ── Indépendants / régionaux ───────────────────────────────────
+  ['Picoty',         /\bpicoty\b/i],
+  ['Zoom',           /\bzoom\b/i],
+  ['DKV',            /\bdkv\b/i],
+  ['OIL!',           /\boil!\b/i],
+];
+
+/* ============================================================
+   MOCK DATA — fallback when API unreachable
+   ============================================================ */
+// Generic addresses — city is injected at runtime from user's actual position
+const MOCK_STATIONS = [
+  { id:'m1',  name:'TotalEnergies',    brand:'TotalEnergies', address:'12 Rue du Général de Gaulle', latOff:-.009, lngOff:-.018, prices:{SP95:1.759,SP98:1.829,Gazole:1.699,E10:1.729}, open:'h24'    },
+  { id:'m2',  name:'Intermarché',      brand:'Intermarché',   address:'47 Avenue de la République',  latOff:0,     lngOff:-.002, prices:{SP95:1.699,SP98:1.769,Gazole:1.659,E10:1.679,E85:0.819}, open:'open'   },
+  { id:'m3',  name:'BP',               brand:'BP',            address:'3 Avenue Jean Jaurès',        latOff:-.015, lngOff:-.006, prices:{SP95:1.789,SP98:1.849,Gazole:1.729,GPLc:0.899}, open:'open'   },
+  { id:'m4',  name:'E.Leclerc',        brand:'E.Leclerc',     address:'99 Boulevard du Maréchal Foch',latOff:-.019, lngOff:.044, prices:{SP95:1.659,SP98:1.729,Gazole:1.629,E10:1.649,E85:0.789}, open:'open'   },
+  { id:'m5',  name:'Shell',            brand:'Shell',         address:'Place de la Liberté',         latOff:-.011, lngOff:-.016, prices:{SP95:1.809,SP98:1.879,Gazole:1.749,GPLc:0.929}, open:'h24'    },
+  { id:'m6',  name:'Carrefour',        brand:'Carrefour',     address:'188 Route Nationale',         latOff:.011,  lngOff:.035,  prices:{SP95:1.679,Gazole:1.639,E10:1.659,E85:0.799}, open:'open'   },
+  { id:'m7',  name:'TotalEnergies',    brand:'TotalEnergies', address:'10 Rue de Paris',             latOff:-.062, lngOff:.048,  prices:{SP95:1.749,SP98:1.819,Gazole:1.689,E10:1.719}, open:'open'   },
+  { id:'m8',  name:'Système U',        brand:'Système U',     address:'2 Allée des Marronniers',     latOff:.037,  lngOff:.005,  prices:{SP95:1.689,SP98:1.749,Gazole:1.649,E10:1.669}, open:'open'   },
+  { id:'m9',  name:'Esso',             brand:'Esso',          address:'15 Rue de la Gare',           latOff:.02,   lngOff:-.021, prices:{SP95:1.769,SP98:1.839,Gazole:1.709}, open:'closed'  },
+  { id:'m10', name:'Lidl Carburant',   brand:'Lidl',          address:'14 Rue des Entrepreneurs',    latOff:.012,  lngOff:.119,  prices:{SP95:1.649,Gazole:1.619,E10:1.639}, open:'open'   },
+  { id:'m11', name:'Agip',             brand:'Agip',          address:'Quai du Commerce',            latOff:-.014, lngOff:-.022, prices:{SP95:1.799,SP98:1.869,Gazole:1.739,GPLc:0.909}, open:'h24'    },
+  { id:'m12', name:'Casino',           brand:'Casino',        address:'34 Avenue Victor Hugo',       latOff:.005,  lngOff:.013,  prices:{SP95:1.669,Gazole:1.629,E10:1.649,E85:0.809}, open:'open'   },
+];
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const ALL_FUELS = Object.keys(FUEL_MAP); // ['SP95','SP98','Gazole','E10','E85','GPLc']
+
+// Returns the active fuel list (empty state.fuels means all fuels)
+function getActiveFuels() { return state.fuels.length ? state.fuels : ALL_FUELS; }
+
+// Best (lowest) price across active fuels for a given station
+function getBestPrice(s) {
+  const prices = getActiveFuels().map(f => s.prices[f]).filter(v => v != null);
+  return prices.length ? Math.min(...prices) : null;
+}
+
+// Which fuel gives the best price
+function getBestFuel(s) {
+  const fuels = getActiveFuels().filter(f => s.prices[f] != null);
+  return fuels.length ? fuels.reduce((a, b) => s.prices[a] <= s.prices[b] ? a : b) : null;
+}
+
+let state = {
+  userLat: 48.8566, userLng: 2.3522, // Paris default (shows before geolocation)
+  radius: 5,
+  fuels: [],        // empty = all fuels; array of selected fuel keys otherwise
+  maxPrice: 2.50,
+  sort: 'price',
+  stations: [],
+  filtered: [],
+  selectedId: null,
+  loading: false,
+  error: null,
+  isDemo: false,
+};
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371, r = Math.PI / 180;
+  const dLat = (lat2-lat1)*r, dLng = (lng2-lng1)*r;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*r)*Math.cos(lat2*r)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function guessBrand(name) {
+  if (!name) return '';
+  for (const [brand, re] of BRAND_RE) if (re.test(name)) return brand;
+  return '';
+}
+
+function getFreshness(isoDate) {
+  if (!isoDate) return null;
+  const h = Math.round((Date.now() - new Date(isoDate)) / 3600000);
+  if (h < 6)  return { label: `À jour (${h < 1 ? '<1h' : h+'h'})`, cls: 'fresh' };
+  if (h < 48) return { label: `${h}h`, cls: 'recent' };
+  const d = Math.floor(h / 24);
+  return { label: `${d} jour${d>1?'s':''}`, cls: 'old' };
+}
+
+function getPriceClass(price) {
+  if (!price) return '';
+  if (price < 1.75) return '';
+  if (price < 1.85) return 'expensive';
+  return 'very-expensive';
+}
+
+// Relative price color within the current filtered set
+function getPriceColor(price, allPrices) {
+  if (!price || !allPrices.length) return 'orange';
+  const min = Math.min(...allPrices);
+  const max = Math.max(...allPrices);
+  if (max === min) return 'green';
+  const ratio = (price - min) / (max - min);
+  if (ratio < 0.33) return 'green';
+  if (ratio < 0.66) return 'orange';
+  return 'red';
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ============================================================
+   API — Real French government data
+   ============================================================ */
+async function fetchFromApi(lat, lng, radius) {
+  const where = `within_distance(geom, geom'POINT(${lng} ${lat})', ${radius}km)`;
+  const params = new URLSearchParams({ where, limit: 100, timezone: 'Europe/Paris' });
+  const res = await fetch(`${API_URL}?${params}`, { signal: AbortSignal.timeout(10000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status} — ${res.statusText}`);
+  const { results } = await res.json();
+
+  return results
+    .filter(s => s.geom?.lat && s.geom?.lon)
+    .map(s => {
+      const prices = {}, updates = {};
+      for (const [fuel, f] of Object.entries(FUEL_MAP)) {
+        if (s[f.prix] != null) prices[fuel] = s[f.prix];
+        if (s[f.maj])          updates[fuel] = s[f.maj];
+      }
+      // Brand: try dedicated marque field first, then fall back to name detection
+      const rawBrand = s.marque || s.Marque || s.enseigneMarque || s.nom || '';
+      const detectedBrand = guessBrand(rawBrand) || guessBrand(s.nom) || rawBrand || '';
+      return {
+        id:       s.id || `${lat}-${lng}-${Math.random()}`,
+        name:     s.nom || 'Station',
+        brand:    detectedBrand,
+        address:  s.adresse || '',
+        city:     s.ville || '',
+        cp:       s.code_postal || '',
+        lat:      s.geom.lat,
+        lng:      s.geom.lon,
+        prices,
+        updates,
+        open:     s.horaires_automate_24_24 ? 'h24' : 'open',
+        distance: haversine(lat, lng, s.geom.lat, s.geom.lon),
+        source:   'gouv',
+      };
+    });
+}
+
+/* ============================================================
+   DEMO FALLBACK
+   ============================================================ */
+// Resolve city name from coordinates using Nominatim reverse geocoding
+async function resolveCity(lat, lng) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10&accept-language=fr`,
+      { headers: { 'Accept-Language': 'fr' } }
+    );
+    const data = await res.json();
+    return data.address?.city || data.address?.town || data.address?.village || data.address?.county || '';
+  } catch { return ''; }
+}
+
+async function buildDemoStations(lat, lng) {
+  const city = await resolveCity(lat, lng);
+  const now = new Date();
+  return MOCK_STATIONS.map(s => {
+    const stLat = lat + s.latOff, stLng = lng + s.lngOff;
+    const updates = {};
+    for (const fuel of Object.keys(s.prices)) {
+      const hoursAgo = Math.floor(Math.random() * 72);
+      updates[fuel] = new Date(now - hoursAgo * 3600000).toISOString();
+    }
+    // Use real city from reverse geocode; name stays as generic brand name
+    return { ...s, city, lat: stLat, lng: stLng, updates, distance: haversine(lat, lng, stLat, stLng), source: 'demo' };
+  });
+}
+
+/* ============================================================
+   LOAD STATIONS
+   ============================================================ */
+async function loadStations() {
+  setLoading(true);
+  state.error = null;
+  try {
+    // Use zone bounding circle if a custom zone is drawn, else use user position + radius
+    const bc = drawing.committedZone ? zoneBoundingCircle()
+      : { lat: state.userLat, lng: state.userLng, radiusKm: state.radius };
+    const data = await fetchFromApi(bc.lat, bc.lng, bc.radiusKm);
+    state.stations = data;
+    state.isDemo = false;
+    setDemoMode(false);
+    setApiStatus('ok', `${data.length} stations · Données live`);
+  } catch (err) {
+    console.warn('API error, falling back to demo:', err.message);
+    state.error = err.message;
+    // Auto-fallback to demo
+    loadDemoMode();
+    return;
+  }
+  applyFilters();
+  setLoading(false);
+}
+
+async function loadDemoMode() {
+  state.stations = await buildDemoStations(state.userLat, state.userLng);
+  state.isDemo = true;
+  state.error = null;
+  setDemoMode(true);
+  setApiStatus('warn', 'Mode démo actif');
+  applyFilters();
+  setLoading(false);
+}
+
+function retryRealApi() {
+  state.isDemo = false;
+  loadStations();
+}
+window.retryRealApi = retryRealApi;
+
+/* ============================================================
+   FILTERS & SORT
+   ============================================================ */
+function applyFilters() {
+  const fuels = getActiveFuels();
+  let list = state.stations.filter(s => {
+    // Must have at least one active fuel
+    if (!fuels.some(f => f in s.prices)) return false;
+    // At least one active fuel must be within the price ceiling
+    if (!fuels.some(f => f in s.prices && s.prices[f] <= state.maxPrice)) return false;
+    // Zone / distance filter
+    if (drawing.committedZone) {
+      if (!pointInZone(s.lat, s.lng)) return false;
+    } else {
+      if (s.distance > state.radius) return false;
+    }
+    return true;
+  });
+  if (drawing.committedZone) updateDrawToolbar(true);
+
+  const latestUpdate = s => Math.max(...fuels.filter(f => s.updates?.[f]).map(f => new Date(s.updates[f]).getTime()), 0);
+  if (state.sort === 'price')           list.sort((a,b) => (getBestPrice(a)||999) - (getBestPrice(b)||999));
+  else if (state.sort === 'price-desc') list.sort((a,b) => (getBestPrice(b)||0)   - (getBestPrice(a)||0));
+  else if (state.sort === 'distance')   list.sort((a,b) => a.distance - b.distance);
+  else if (state.sort === 'freshness')  list.sort((a,b) => latestUpdate(b) - latestUpdate(a));
+
+  state.filtered = list;
+  renderList();
+  renderMarkers();
+}
+
+/* ============================================================
+   RENDER — Station list
+   ============================================================ */
+function renderList() {
+  const el = document.getElementById('station-list');
+  document.getElementById('results-count').innerHTML = `<strong>${state.filtered.length}</strong> station${state.filtered.length!==1?'s':''}`;
+  // Update FAB counter (mobile)
+  const fabCount = document.getElementById('fab-count');
+  if (fabCount) fabCount.textContent = `${state.filtered.length} station${state.filtered.length!==1?'s':''}`;
+
+  if (state.filtered.length === 0) {
+    el.innerHTML = `<div class="empty-state">
+      <div style="width:48px;height:48px;margin:0 auto 16px;color:var(--color-text-faint);">
+        <i data-lucide="fuel" style="width:48px;height:48px;"></i>
+      </div>
+      <h3>Aucune station trouvée</h3>
+      <p>Essayez d'augmenter le rayon ou de relâcher le filtre prix.</p>
+    </div>`;
+    lucide.createIcons();
+    return;
+  }
+
+  const activeFuels = getActiveFuels();
+  const allBestPrices = state.filtered.map(s => getBestPrice(s)).filter(Boolean);
+  const minPrice = allBestPrices.length ? Math.min(...allBestPrices) : 999;
+
+  el.innerHTML = state.filtered.map((s, i) => {
+    const price = getBestPrice(s);
+    const bestFuel = getBestFuel(s);
+    const isBest = price !== null && price === minPrice;
+    const pClass = getPriceClass(price);
+    // Brand as primary name, raw name as subtitle only if different
+    const displayName = s.brand || s.name || 'Station';
+    const displaySub  = s.city || '';
+    const freshRaw = bestFuel ? s.updates?.[bestFuel] : null;
+    const fresh = getFreshness(freshRaw);
+    const openHtml = s.open === 'h24'
+      ? `<span class="station-status h24">24h/24</span>`
+      : s.open === 'open'
+        ? `<span class="station-status open">Ouvert</span>`
+        : `<span class="station-status closed">Fermé</span>`;
+    // Show all prices; highlight fuels that are currently selected
+    const fuelTags = Object.entries(s.prices).map(([f, p]) =>
+      `<div class="fuel-tag ${activeFuels.includes(f)?'highlighted':''}">
+        ${f} <strong>${p.toFixed(3)} €</strong>
+       </div>`
+    ).join('');
+    const freshHtml = fresh
+      ? `<span class="freshness ${fresh.cls}"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${fresh.label}</span>`
+      : '';
+
+    return `
+      <div class="station-card${isBest?' best-price':''}${state.selectedId===s.id?' selected':''}"
+           data-id="${s.id}" role="button" tabindex="0">
+        <span class="best-price-badge">⭐ Moins cher</span>
+        <div class="station-card-top">
+          <div>
+            <div class="station-name">${escHtml(displayName)}</div>
+            ${displaySub ? `<div class="station-brand">${escHtml(displaySub)}</div>` : ''}
+          </div>
+          <div class="price-badge-main ${pClass}">${price != null ? price.toFixed(3)+' €' : '—'}</div>
+        </div>
+        <div class="station-addr">
+          <i data-lucide="map-pin" style="width:12px;height:12px;flex-shrink:0;margin-top:1px;"></i>
+          <span>${escHtml(s.address)}${s.city?', '+escHtml(s.city):''}</span>
+        </div>
+        <div class="fuel-prices">${fuelTags}</div>
+        <div class="station-meta">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span class="station-dist">
+              <i data-lucide="navigation" style="width:11px;height:11px;"></i>
+              ${s.distance<1?(s.distance*1000).toFixed(0)+'m':s.distance.toFixed(1)+' km'}
+            </span>
+            ${freshHtml}
+          </div>
+          ${openHtml}
+        </div>
+      </div>`;
+  }).join('');
+
+  lucide.createIcons();
+
+  el.querySelectorAll('.station-card').forEach(card => {
+    card.addEventListener('click', () => selectStation(card.dataset.id));
+    card.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' ') selectStation(card.dataset.id); });
+  });
+}
+
+/* ============================================================
+   MAP — Marker cluster
+   ============================================================ */
+let map, tileLayer, clusterGroup = null, userMarker = null;
+let markerMap = {};
+
+map = L.map('map', { zoomControl: true }).setView([48.8566, 2.3522], 12);
+
+function addTileLayer() {
+  if (tileLayer) tileLayer.remove();
+  const dark = document.documentElement.dataset.theme === 'dark';
+  tileLayer = L.tileLayer(
+    dark ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+          : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    { attribution: '© OpenStreetMap © CARTO', maxZoom: 19 }
+  ).addTo(map);
+}
+addTileLayer();
+
+function setUserMarker(lat, lng) {
+  if (userMarker) userMarker.remove();
+  userMarker = L.marker([lat, lng], {
+    icon: L.divIcon({
+      html: `<div style="width:16px;height:16px;background:#2563eb;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.35);"></div>`,
+      className: '', iconAnchor: [8,8]
+    }),
+    zIndexOffset: 1000
+  }).addTo(map).bindPopup('<div class="popup-content"><div class="popup-name">📍 Votre position</div></div>');
+}
+
+function renderMarkers() {
+  if (clusterGroup) { clusterGroup.clearLayers(); }
+  else {
+    clusterGroup = L.markerClusterGroup({
+      maxClusterRadius: 50,
+      iconCreateFunction(cluster) {
+        const children = cluster.getAllChildMarkers();
+        const prices = children.map(m => m.options._price).filter(Boolean);
+        const minP = prices.length ? Math.min(...prices) : null;
+        const label = minP ? `${minP.toFixed(2)}€` : `${cluster.getChildCount()}`;
+        return L.divIcon({
+          html: `<div style="background:var(--color-primary);color:white;font-family:var(--font-display);font-weight:700;font-size:11px;padding:5px 10px;border-radius:999px;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:nowrap;">${label}<sup style="font-size:9px;margin-left:2px;">${cluster.getChildCount()}</sup></div>`,
+          className: '', iconAnchor: [30, 15]
+        });
+      }
+    });
+    map.addLayer(clusterGroup);
+  }
+  markerMap = {};
+
+  if (!state.filtered.length) return;
+  const allPrices = state.filtered.map(s => getBestPrice(s)).filter(Boolean);
+
+  state.filtered.forEach(s => {
+    const price = getBestPrice(s);
+    const color = getPriceColor(price, allPrices);
+    const isSelected = state.selectedId === s.id;
+    const icon = L.divIcon({
+      html: `<div class="map-pin${isSelected ? ' selected' : ''}" data-color="${color}"><div class="pin-bubble">${price != null ? price.toFixed(2)+'€' : '?'}</div><div class="pin-tail"></div></div>`,
+      className: '', iconAnchor: [28, 38]
+    });
+    const m = L.marker([s.lat, s.lng], { icon, _price: price })
+      .on('click', () => selectStation(s.id));
+    const displayName = s.brand || s.name || 'Station';
+    const priceTags = Object.entries(s.prices).map(([f,p]) =>
+      `<div class="popup-price-tag">${f} <strong>${p.toFixed(3)}€</strong></div>`
+    ).join('');
+    const mapsUrl = `https://maps.google.com/maps?daddr=${s.lat},${s.lng}`;
+    m.bindPopup(`
+      <div class="popup-content">
+        <div class="popup-name">${escHtml(displayName)}</div>
+        <div class="popup-addr">${escHtml(s.address)}${s.city?', '+escHtml(s.city):''}</div>
+        <div class="popup-prices">${priceTags}</div>
+        <a href="${mapsUrl}" target="_blank" rel="noopener" class="popup-nav-btn">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 19-9-9 19-2-8-8-2z"/></svg>
+          Itinéraire
+        </a>
+      </div>`);
+    clusterGroup.addLayer(m);
+    markerMap[s.id] = m;
+  });
+}
+
+function selectStation(id) {
+  state.selectedId = id;
+  // On mobile, expand the sheet to show the selected card
+  if (window.innerWidth <= 768) {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar?.getAttribute('data-sheet') === 'peek') sidebar.setAttribute('data-sheet', 'half');
+  }
+  const s = state.filtered.find(x => x.id === id);
+  document.querySelectorAll('.station-card').forEach(c => c.classList.toggle('selected', c.dataset.id === id));
+  renderMarkers(); // re-render to update selected marker style
+  if (s && markerMap[id]) {
+    clusterGroup.zoomToShowLayer(markerMap[id], () => {
+      markerMap[id]?.openPopup();
+    });
+  }
+  const card = document.querySelector(`.station-card[data-id="${id}"]`);
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/* ============================================================
+   UI HELPERS
+   ============================================================ */
+function setLoading(v) {
+  state.loading = v;
+  document.getElementById('loading-indicator').style.display = v ? 'flex' : 'none';
+}
+
+function setDemoMode(v) {
+  document.getElementById('demo-banner').style.display = v ? 'block' : 'none';
+  document.getElementById('badge-demo').style.display = v ? 'inline-flex' : 'none';
+}
+
+function setApiStatus(type, text) {
+  const el = document.getElementById('api-status');
+  const dots = { ok: '#3fb950', warn: '#d97706', error: '#f85149' };
+  const dot = dots[type] || '#6b7280';
+  el.innerHTML = `<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="${dot}"/></svg><span>${text}</span>`;
+}
+
+/* ============================================================
+   GEOLOCATION — high-accuracy with accuracy indicator
+   ============================================================ */
+let accuracyCircle = null;
+let geoWatchId    = null;   // watchPosition handle
+let watchLoadedLat = null;  // position at which stations were last loaded
+let watchLoadedLng = null;
+
+function applyPosition(pos) {
+  const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+  state.userLat = lat; state.userLng = lng;
+  state._savedUserLat = lat; state._savedUserLng = lng;
+  setUserMarker(lat, lng);
+  // Show accuracy radius ring on map
+  if (accuracyCircle) accuracyCircle.remove();
+  if (accuracy < 5000) { // only show if reasonable
+    accuracyCircle = L.circle([lat, lng], {
+      radius: accuracy, color: '#2563eb', weight: 1.5,
+      opacity: 0.6, fillColor: '#2563eb', fillOpacity: 0.05, dashArray: '4 4'
+    }).addTo(map);
+  }
+  map.setView([lat, lng], 14);
+  loadStations();
+}
+
+/* Update marker + accuracy ring without reloading stations */
+function applyPositionSilent(pos) {
+  const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+  state.userLat = lat; state.userLng = lng;
+  state._savedUserLat = lat; state._savedUserLng = lng;
+  setUserMarker(lat, lng);
+  if (accuracyCircle) accuracyCircle.remove();
+  if (accuracy < 5000) {
+    accuracyCircle = L.circle([lat, lng], {
+      radius: accuracy, color: '#2563eb', weight: 1.5,
+      opacity: 0.6, fillColor: '#2563eb', fillOpacity: 0.05, dashArray: '4 4'
+    }).addTo(map);
+  }
+}
+
+/* Start (or restart) continuous position tracking.
+   onSuccess() called on first fix; onError(err) if first fix fails. */
+function startGeoWatch(onSuccess, onError) {
+  if (geoWatchId !== null) {
+    navigator.geolocation.clearWatch(geoWatchId);
+    geoWatchId = null;
+  }
+  let firstFix = true;
+  geoWatchId = navigator.geolocation.watchPosition(pos => {
+    const { latitude: lat, longitude: lng } = pos.coords;
+    if (firstFix) {
+      firstFix = false;
+      watchLoadedLat = lat; watchLoadedLng = lng;
+      applyPosition(pos);           // center map + load stations
+      if (onSuccess) onSuccess();
+    } else {
+      applyPositionSilent(pos);     // move the dot in real-time
+      // Reload stations if the user has moved more than 300 m
+      if (watchLoadedLat !== null &&
+          haversine(lat, lng, watchLoadedLat, watchLoadedLng) > 0.3) {
+        watchLoadedLat = lat; watchLoadedLng = lng;
+        loadStations();
+      }
+    }
+  }, err => {
+    if (firstFix) {
+      firstFix = false;
+      if (onError) onError(err);
+      else loadStations();          // fallback: load from default position
+    }
+  }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+}
+
+document.getElementById('locate-btn').addEventListener('click', () => {
+  if (!navigator.geolocation) return alert('Géolocalisation non disponible dans ce navigateur.');
+  const btn = document.getElementById('locate-btn');
+
+  // If already tracking and we have a known position, just re-center the map
+  if (geoWatchId !== null && state._savedUserLat) {
+    map.setView([state._savedUserLat, state._savedUserLng], 14);
+    return;
+  }
+
+  // Otherwise start (or restart) live tracking
+  btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin .7s linear infinite"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg> Localisation…`;
+  btn.disabled = true;
+  setLoading(true);
+
+  startGeoWatch(
+    () => {  // first fix succeeded
+      btn.innerHTML = `<i data-lucide="crosshair" style="width:16px;height:16px;"></i> Ma position`;
+      btn.disabled = false;
+      lucide.createIcons();
+    },
+    err => { // first fix failed
+      setLoading(false);
+      btn.innerHTML = `<i data-lucide="crosshair" style="width:16px;height:16px;"></i> Ma position`;
+      btn.disabled = false;
+      lucide.createIcons();
+      alert('Position non obtenue : ' + err.message + '\n\nVérifiez que la géolocalisation est autorisée dans votre navigateur.');
+    }
+  );
+});
+
+/* ============================================================
+   GEOCODING (Nominatim)
+   ============================================================ */
+let searchTimeout;
+document.getElementById('search-input').addEventListener('input', e => {
+  clearTimeout(searchTimeout);
+  const q = e.target.value.trim();
+  if (q.length < 3) return;
+  searchTimeout = setTimeout(async () => {
+    try {
+      setLoading(true);
+      const r = await fetch(`${NOMINATIM}?q=${encodeURIComponent(q+', France')}&format=json&limit=1`, {
+        headers: { 'Accept-Language': 'fr' }
+      });
+      const data = await r.json();
+      if (data?.[0]) {
+        state.userLat = parseFloat(data[0].lat);
+        state.userLng = parseFloat(data[0].lon);
+        setUserMarker(state.userLat, state.userLng);
+        map.setView([state.userLat, state.userLng], 13);
+        loadStations();
+      } else {
+        setLoading(false);
+      }
+    } catch { setLoading(false); }
+  }, 600);
+});
+
+/* ============================================================
+   DRAWING ENGINE — Circle / Rectangle / L-shape
+   ============================================================ */
+const drawing = {
+  mode: 'circle',       // 'circle' | 'rectangle' | 'l-shape'
+  zoneMode: 'radius',   // 'radius' | 'custom'
+  lRotation: 0,         // 0 | 90 | 180 | 270
+  active: false,        // currently dragging?
+  startLatLng: null,
+  previewLayer: null,   // Leaflet layer being drawn
+  committedZone: null,  // { type, ...params } finalized zone
+};
+
+// ── Geometry helpers ─────────────────────────────────────────
+
+/** Build the 6 polygon points of an L-shape from its bounding box */
+function lShapePoints(minLat, maxLat, minLng, maxLng, rotation, armRatio = 0.38) {
+  const Tlat = (maxLat - minLat) * armRatio;
+  const Tlng = (maxLng - minLng) * armRatio;
+  switch (rotation) {
+    case 0:   // └ corner bottom-left: vert-LEFT, horiz-BOTTOM
+      return [[maxLat, minLng], [maxLat, minLng+Tlng],
+              [minLat+Tlat, minLng+Tlng], [minLat+Tlat, maxLng],
+              [minLat, maxLng], [minLat, minLng]];
+    case 90:  // ┘ corner bottom-right: vert-RIGHT, horiz-BOTTOM
+      return [[maxLat, maxLng-Tlng], [maxLat, maxLng],
+              [minLat, maxLng], [minLat, minLng],
+              [minLat+Tlat, minLng], [minLat+Tlat, maxLng-Tlng]];
+    case 180: // ┐ corner top-right: vert-RIGHT, horiz-TOP
+      return [[maxLat, minLng], [maxLat, maxLng],
+              [minLat, maxLng], [minLat, maxLng-Tlng],
+              [maxLat-Tlat, maxLng-Tlng], [maxLat-Tlat, minLng]];
+    case 270: // ┌ corner top-left: vert-LEFT, horiz-TOP
+      return [[maxLat, minLng], [maxLat, maxLng],
+              [maxLat-Tlat, maxLng], [maxLat-Tlat, minLng+Tlng],
+              [minLat, minLng+Tlng], [minLat, minLng]];
+  }
+}
+
+/** True if point [lat,lng] is inside the committed zone */
+function pointInZone(lat, lng) {
+  const z = drawing.committedZone;
+  if (!z) return true; // no zone drawn → include all
+
+  if (z.type === 'circle') {
+    return haversine(lat, lng, z.lat, z.lng) <= z.radiusKm;
+  }
+  if (z.type === 'rectangle') {
+    return lat >= z.minLat && lat <= z.maxLat && lng >= z.minLng && lng <= z.maxLng;
+  }
+  if (z.type === 'l-shape') {
+    if (lat < z.minLat || lat > z.maxLat || lng < z.minLng || lng > z.maxLng) return false;
+    const Tlat = (z.maxLat - z.minLat) * 0.38;
+    const Tlng = (z.maxLng - z.minLng) * 0.38;
+    switch (z.rotation) {
+      case 0:   return lng <= z.minLng + Tlng || lat <= z.minLat + Tlat;
+      case 90:  return lng >= z.maxLng - Tlng || lat <= z.minLat + Tlat;
+      case 180: return lng >= z.maxLng - Tlng || lat >= z.maxLat - Tlat;
+      case 270: return lng <= z.minLng + Tlng || lat >= z.maxLat - Tlat;
+    }
+  }
+  return true;
+}
+
+/** Bounding circle around the committed zone for API call */
+function zoneBoundingCircle() {
+  const z = drawing.committedZone;
+  if (!z) return { lat: state.userLat, lng: state.userLng, radiusKm: state.radius };
+  if (z.type === 'circle') return { lat: z.lat, lng: z.lng, radiusKm: z.radiusKm };
+  // Rectangle / L-shape: use diagonal / 2
+  const cLat = (z.minLat + z.maxLat) / 2, cLng = (z.minLng + z.maxLng) / 2;
+  const radiusKm = haversine(z.minLat, z.minLng, z.maxLat, z.maxLng) / 2;
+  return { lat: cLat, lng: cLng, radiusKm: Math.min(radiusKm, 50) };
+}
+
+// ── Layer helpers ─────────────────────────────────────────────
+
+const ZONE_STYLE = { color: '#15803d', weight: 2.5, opacity: 0.9, fillColor: '#15803d', fillOpacity: 0.1, dashArray: '6 4' };
+const ZONE_STYLE_COMMITTED = { ...ZONE_STYLE, fillOpacity: 0.12, dashArray: null };
+
+function removePreview() {
+  if (drawing.previewLayer) { drawing.previewLayer.remove(); drawing.previewLayer = null; }
+}
+
+function drawPreview(startLL, currentLL) {
+  removePreview();
+  const sLat = startLL.lat, sLng = startLL.lng;
+  const cLat = currentLL.lat, cLng = currentLL.lng;
+  const minLat = Math.min(sLat, cLat), maxLat = Math.max(sLat, cLat);
+  const minLng = Math.min(sLng, cLng), maxLng = Math.max(sLng, cLng);
+
+  if (drawing.mode === 'circle') {
+    const radiusM = haversine(sLat, sLng, cLat, cLng) * 1000;
+    drawing.previewLayer = L.circle([sLat, sLng], { radius: radiusM, ...ZONE_STYLE }).addTo(map);
+  } else if (drawing.mode === 'rectangle') {
+    drawing.previewLayer = L.rectangle([[minLat, minLng], [maxLat, maxLng]], ZONE_STYLE).addTo(map);
+  } else if (drawing.mode === 'l-shape') {
+    const pts = lShapePoints(minLat, maxLat, minLng, maxLng, drawing.lRotation);
+    drawing.previewLayer = L.polygon(pts, ZONE_STYLE).addTo(map);
+  }
+}
+
+function commitZone(startLL, endLL) {
+  removePreview();
+  const sLat = startLL.lat, sLng = startLL.lng;
+  const eLat = endLL.lat, eLng = endLL.lng;
+  const minLat = Math.min(sLat, eLat), maxLat = Math.max(sLat, eLat);
+  const minLng = Math.min(sLng, eLng), maxLng = Math.max(sLng, eLng);
+
+  if (drawing.mode === 'circle') {
+    const radiusKm = haversine(sLat, sLng, eLat, eLng);
+    drawing.committedZone = { type: 'circle', lat: sLat, lng: sLng, radiusKm };
+    drawing.previewLayer = L.circle([sLat, sLng], { radius: radiusKm * 1000, ...ZONE_STYLE_COMMITTED }).addTo(map);
+  } else if (drawing.mode === 'rectangle') {
+    drawing.committedZone = { type: 'rectangle', minLat, maxLat, minLng, maxLng };
+    drawing.previewLayer = L.rectangle([[minLat, minLng], [maxLat, maxLng]], ZONE_STYLE_COMMITTED).addTo(map);
+  } else if (drawing.mode === 'l-shape') {
+    drawing.committedZone = { type: 'l-shape', minLat, maxLat, minLng, maxLng, rotation: drawing.lRotation };
+    const pts = lShapePoints(minLat, maxLat, minLng, maxLng, drawing.lRotation);
+    drawing.previewLayer = L.polygon(pts, ZONE_STYLE_COMMITTED).addTo(map);
+  }
+
+  updateDrawToolbar(true);
+  // Fetch within bounding circle, then filter by shape client-side
+  const bc = zoneBoundingCircle();
+  state.userLat = bc.lat; state.userLng = bc.lng; state.radius = bc.radiusKm;
+  if (state.isDemo) { buildDemoStations(bc.lat, bc.lng).then(s => { state.stations = s; applyFilters(); }); }
+  else loadStations();
+}
+
+function clearZone() {
+  removePreview();
+  drawing.committedZone = null;
+  updateDrawToolbar(false);
+  document.getElementById('draw-hint').textContent = 'Cliquez-glissez sur la carte pour dessiner';
+  // Re-fetch with normal radius around user position
+  state.userLat = state._savedUserLat ?? state.userLat;
+  state.userLng = state._savedUserLng ?? state.userLng;
+  if (state.isDemo) { buildDemoStations(state.userLat, state.userLng).then(s => { state.stations = s; applyFilters(); }); }
+  else loadStations();
+}
+window.clearZone = clearZone;
+
+function updateDrawToolbar(zoneCommitted) {
+  const tb = document.getElementById('draw-toolbar');
+  const hint = document.getElementById('draw-toolbar-hint');
+  if (drawing.zoneMode !== 'custom') { tb.classList.remove('visible'); return; }
+  tb.classList.add('visible');
+  const labels = { circle: 'Cercle', rectangle: 'Rectangle', 'l-shape': 'Forme L' };
+  if (zoneCommitted) {
+    hint.innerHTML = `<strong>${labels[drawing.mode]}</strong> dessiné — ${state.filtered?.length ?? '…'} station(s) dans la zone`;
+  } else {
+    hint.innerHTML = `<strong>${labels[drawing.mode]}</strong> — Cliquez et glissez pour dessiner`;
+  }
+}
+
+// ── Map mouse events ──────────────────────────────────────────
+
+map.on('mousedown', e => {
+  if (drawing.zoneMode !== 'custom') return;
+  if (e.originalEvent.button !== 0) return; // left click only
+  drawing.active = true;
+  drawing.startLatLng = e.latlng;
+  map.dragging.disable();
+  e.originalEvent.preventDefault();
+});
+
+map.on('mousemove', e => {
+  if (!drawing.active || !drawing.startLatLng) return;
+  drawPreview(drawing.startLatLng, e.latlng);
+});
+
+map.on('mouseup', e => {
+  if (!drawing.active || !drawing.startLatLng) return;
+  drawing.active = false;
+  map.dragging.enable();
+  const dist = haversine(drawing.startLatLng.lat, drawing.startLatLng.lng, e.latlng.lat, e.latlng.lng);
+  if (dist < 0.1) { removePreview(); return; } // too small — ignore
+  commitZone(drawing.startLatLng, e.latlng);
+  drawing.startLatLng = null;
+});
+
+map.on('mouseleave', () => {
+  if (drawing.active) { drawing.active = false; map.dragging.enable(); removePreview(); drawing.startLatLng = null; }
+});
+
+// Touch support (mobile)
+map.on('touchstart', e => {
+  if (drawing.zoneMode !== 'custom') return;
+  drawing.active = true;
+  drawing.startLatLng = e.latlng;
+  map.dragging.disable();
+});
+map.on('touchmove', e => {
+  if (!drawing.active || !drawing.startLatLng) return;
+  drawPreview(drawing.startLatLng, e.latlng);
+});
+map.on('touchend', e => {
+  if (!drawing.active || !drawing.startLatLng) return;
+  drawing.active = false; map.dragging.enable();
+  if (e.latlng) commitZone(drawing.startLatLng, e.latlng);
+  drawing.startLatLng = null;
+});
+
+// ── Zone mode controls ────────────────────────────────────────
+
+document.getElementById('zone-mode-radius').addEventListener('click', () => {
+  drawing.zoneMode = 'radius';
+  document.getElementById('zone-mode-radius').classList.add('active');
+  document.getElementById('zone-mode-custom').classList.remove('active');
+  document.getElementById('radius-tabs').style.display = '';
+  document.getElementById('custom-zone-panel').style.display = 'none';
+  document.getElementById('map-area').classList.remove('draw-active');
+  document.getElementById('draw-toolbar').classList.remove('visible');
+  clearZone();
+});
+
+document.getElementById('zone-mode-custom').addEventListener('click', () => {
+  drawing.zoneMode = 'custom';
+  // Save user position before zone overrides it
+  state._savedUserLat = state.userLat; state._savedUserLng = state.userLng;
+  document.getElementById('zone-mode-custom').classList.add('active');
+  document.getElementById('zone-mode-radius').classList.remove('active');
+  document.getElementById('radius-tabs').style.display = 'none';
+  document.getElementById('custom-zone-panel').style.display = '';
+  document.getElementById('map-area').classList.add('draw-active');
+  updateDrawToolbar(false);
+});
+
+// Draw mode buttons (circle / rectangle / l-shape)
+document.querySelectorAll('.draw-mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.draw-mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    drawing.mode = btn.dataset.draw;
+    // Show/hide L rotation
+    document.getElementById('l-rotation-row').classList.toggle('visible', drawing.mode === 'l-shape');
+    // If zone already committed, redraw with new type from same bbox
+    if (drawing.committedZone) { clearZone(); }
+    updateDrawToolbar(false);
+  });
+});
+
+// L-shape rotation buttons
+document.querySelectorAll('.l-rot-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.l-rot-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    drawing.lRotation = parseInt(btn.dataset.lrot);
+    // If a zone is already drawn, re-draw it with the new rotation
+    if (drawing.committedZone?.type === 'l-shape') {
+      const z = drawing.committedZone;
+      z.rotation = drawing.lRotation;
+      removePreview();
+      const pts = lShapePoints(z.minLat, z.maxLat, z.minLng, z.maxLng, z.rotation);
+      drawing.previewLayer = L.polygon(pts, ZONE_STYLE_COMMITTED).addTo(map);
+      applyFilters(); // re-filter with new rotation (no new API call needed, same bbox)
+    }
+  });
+});
+
+// Clear zone button
+document.getElementById('btn-clear-zone').addEventListener('click', clearZone);
+
+/* ============================================================
+   CONTROLS
+   ============================================================ */
+document.querySelectorAll('.radius-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.radius-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    state.radius = parseInt(tab.dataset.radius);
+    if (state.isDemo) { buildDemoStations(state.userLat, state.userLng).then(s => { state.stations = s; applyFilters(); }); }
+    else loadStations();
+  });
+});
+
+function syncFuelChips() {
+  const isAll = state.fuels.length === 0;
+  document.querySelector('.chip[data-fuel="all"]')?.classList.toggle('active', isAll);
+  document.querySelectorAll('.chip[data-fuel]:not([data-fuel="all"])').forEach(c => {
+    c.classList.toggle('active', !isAll && state.fuels.includes(c.dataset.fuel));
+  });
+}
+
+document.querySelector('.chip[data-fuel="all"]').addEventListener('click', () => {
+  state.fuels = [];  // empty = all
+  syncFuelChips();
+  applyFilters();
+});
+
+document.querySelectorAll('.chip[data-fuel]:not([data-fuel="all"])').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const f = chip.dataset.fuel;
+    if (state.fuels.length === 0) {
+      // Currently "Tous" → switch to this fuel only
+      state.fuels = [f];
+    } else {
+      const idx = state.fuels.indexOf(f);
+      if (idx >= 0) {
+        state.fuels = state.fuels.filter(x => x !== f);
+        // If we removed the last one, go back to "all"
+        if (state.fuels.length === 0) state.fuels = [];
+      } else {
+        state.fuels = [...state.fuels, f];
+        // If every individual fuel is now selected, collapse back to "Tous"
+        if (state.fuels.length === ALL_FUELS.length) state.fuels = [];
+      }
+    }
+    syncFuelChips();
+    applyFilters();
+  });
+});
+
+document.getElementById('price-range').addEventListener('input', e => {
+  state.maxPrice = parseFloat(e.target.value);
+  document.getElementById('range-display').textContent = state.maxPrice.toFixed(2) + ' €';
+  applyFilters();
+});
+
+document.getElementById('sort-select').addEventListener('change', e => {
+  state.sort = e.target.value;
+  applyFilters();
+});
+
+/* ============================================================
+   THEME TOGGLE
+   ============================================================ */
+let currentTheme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+document.documentElement.setAttribute('data-theme', currentTheme);
+document.getElementById('theme-toggle').addEventListener('click', () => {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', currentTheme);
+  addTileLayer();
+});
+
+/* ============================================================
+   MOBILE BOTTOM-SHEET BEHAVIOUR
+   ============================================================ */
+(function setupMobileSheet() {
+  const sidebar  = document.getElementById('sidebar');
+  const handle   = document.getElementById('mobile-handle');
+  const fab      = document.getElementById('fab-filters');
+
+  const STATES = ['peek', 'half', 'full'];
+  function isMobile() { return window.innerWidth <= 768; }
+  function getState()  { return sidebar.getAttribute('data-sheet') || 'peek'; }
+  function setState(s) { sidebar.setAttribute('data-sheet', s); }
+
+  // Cycle peek → half → full → peek on tap
+  function cycleState() {
+    const next = { peek: 'half', half: 'full', full: 'peek' };
+    setState(next[getState()] || 'peek');
+  }
+
+  // FAB opens to half; if already half/full cycles
+  fab?.addEventListener('click', () => {
+    if (!isMobile()) return;
+    if (getState() === 'peek') setState('half');
+    else cycleState();
+  });
+
+  // Handle tap cycles
+  handle?.addEventListener('click', cycleState);
+
+  // Touch drag on handle ─────────────────────────────────────
+  let dragStartY = 0, dragStartSheet = 0, dragging = false;
+  const snapPoints = {
+    peek: 0.82,   // fraction of sheet height shown (inverted)
+    half: 0.42,
+    full: 0.00,
+  };
+
+  function translateForState(s) {
+    const h = sidebar.offsetHeight;
+    return s === 'peek'  ? h - 64
+         : s === 'half'  ? h * 0.42
+         :                 0;
+  }
+
+  handle?.addEventListener('touchstart', e => {
+    dragging = false;
+    dragStartY = e.touches[0].clientY;
+    dragStartSheet = translateForState(getState());
+    sidebar.style.transition = 'none';
+  }, { passive: true });
+
+  handle?.addEventListener('touchmove', e => {
+    const dy = e.touches[0].clientY - dragStartY;
+    if (Math.abs(dy) > 6) dragging = true;
+    if (!dragging) return;
+    const newT = Math.max(0, Math.min(sidebar.offsetHeight - 40, dragStartSheet + dy));
+    sidebar.style.transform = `translateY(${newT}px)`;
+  }, { passive: true });
+
+  handle?.addEventListener('touchend', e => {
+    sidebar.style.transition = '';
+    sidebar.style.transform  = '';
+    if (!dragging) { cycleState(); return; }
+    dragging = false;
+    const finalY = dragStartSheet + (e.changedTouches[0].clientY - dragStartY);
+    const h = sidebar.offsetHeight;
+    // Snap to nearest state
+    const dists = {
+      peek: Math.abs(finalY - translateForState('peek')),
+      half: Math.abs(finalY - translateForState('half')),
+      full: Math.abs(finalY - translateForState('full')),
+    };
+    const snapped = Object.entries(dists).sort((a,b) => a[1]-b[1])[0][0];
+    setState(snapped);
+  }, { passive: true });
+
+  // Auto-expand to half when a station is selected
+  const _selectStation = window.selectStation;
+  window._mobileSelectWrap = function(id) {
+    if (isMobile() && getState() === 'peek') setState('half');
+  };
+
+  // Close sheet on map click (but not when tapping a marker)
+  document.getElementById('map')?.addEventListener('click', () => {
+    if (isMobile() && getState() !== 'peek') setState('peek');
+  });
+})();
+
+/* ============================================================
+   PWA — inject manifest + register service worker
+   ============================================================ */
+(function injectPWA() {
+  // Inline manifest
+  const manifest = {
+    name: 'StationFuel',
+    short_name: 'StationFuel',
+    description: 'Trouvez le carburant le moins cher près de vous',
+    start_url: './',
+    display: 'standalone',
+    background_color: '#f5f6f7',
+    theme_color: '#15803d',
+    orientation: 'portrait-primary',
+    icons: [
+      {
+        src: `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%2315803d'/><rect x='44' y='46' width='72' height='100' rx='8' stroke='white' stroke-width='8' fill='none'/><path d='M44 76h72' stroke='white' stroke-width='8'/><path d='M116 60l28 12v36l-28 12' stroke='white' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/><path d='M64 62v36M80 62v36' stroke='white' stroke-width='8' stroke-linecap='round'/></svg>`,
+        sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable'
+      },
+      {
+        src: `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%2315803d'/><rect x='116' y='120' width='192' height='272' rx='16' stroke='white' stroke-width='18' fill='none'/><path d='M116 196h192' stroke='white' stroke-width='18'/><path d='M308 156l76 32v96l-76 32' stroke='white' stroke-width='18' stroke-linecap='round' stroke-linejoin='round'/><path d='M168 164v96M212 164v96' stroke='white' stroke-width='18' stroke-linecap='round'/></svg>`,
+        sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable'
+      }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  const link = Object.assign(document.createElement('link'), {
+    rel: 'manifest', href: URL.createObjectURL(blob)
+  });
+  document.head.appendChild(link);
+
+  // Service worker: cache map tiles for offline use
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+const CACHE='sf-v1';
+self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => { e.waitUntil(self.clients.claim()); });
+self.addEventListener('fetch', e => {
+  const url = e.request.url;
+  // Skip fuel API (always live) and non-GET
+  if (e.request.method !== 'GET') return;
+  if (url.includes('data.economie.gouv.fr') || url.includes('nominatim')) return;
+  // Cache map tiles, fonts, and CDN scripts
+  if (url.includes('tile.openstreetmap') || url.includes('fonts.g') ||
+      url.includes('unpkg.com') || url.includes('cdnjs')) {
+    e.respondWith(
+      caches.open(CACHE).then(c =>
+        c.match(e.request).then(cached => cached ||
+          fetch(e.request).then(res => { c.put(e.request, res.clone()); return res; })
+        )
+      ).catch(() => fetch(e.request))
+    );
+  }
+});`;
+    const swBlob = new Blob([swCode], { type: 'text/javascript' });
+    navigator.serviceWorker.register(URL.createObjectURL(swBlob))
+      .catch(() => {}); // silently ignore if blocked (e.g. file://)
+  }
+})();
+
+/* ============================================================
+   INIT — try real API, fallback to demo
+   ============================================================ */
+lucide.createIcons();
+setUserMarker(state.userLat, state.userLng);
+// Start live position tracking on page load
+if (navigator.geolocation) {
+  startGeoWatch();
+} else {
+  loadStations();
+}
+
+// Expand sheet after first load
+setTimeout(() => {
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar')?.setAttribute('data-sheet', 'half');
+  }
+}, 4000);
+</script>
+</body>
+</html>
