@@ -299,6 +299,15 @@ a, button, input, select { transition: color var(--transition), background var(-
   border-radius: var(--radius-full); letter-spacing: 0.05em; display: none;
 }
 .station-card.best-price .best-price-badge { display: block; }
+.cheapest-chip {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--color-warning); color: white;
+  font-size: 11px; font-weight: 700; padding: 5px 10px;
+  border-radius: var(--radius-full); white-space: nowrap; cursor: pointer;
+  border: none; transition: filter var(--transition), transform var(--transition);
+}
+.cheapest-chip:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.cheapest-chip:active { transform: translateY(0); }
 /* Skeleton */
 .skeleton-card {
   padding: var(--space-4); background: var(--color-surface-2);
@@ -698,6 +707,7 @@ a, button, input, select { transition: color var(--transition), background var(-
 
     <div class="results-header">
       <span class="results-count" id="results-count"><strong>—</strong> stations</span>
+      <button type="button" class="cheapest-chip" id="cheapest-chip" style="display:none;" title="Voir cette station sur la carte"></button>
       <div id="loading-indicator" style="display:none;"><div class="spinner"></div></div>
     </div>
 
@@ -1065,7 +1075,10 @@ function renderList() {
   const fabCount = document.getElementById('fab-count');
   if (fabCount) fabCount.textContent = `${state.filtered.length} station${state.filtered.length!==1?'s':''}`;
 
+  const chip = document.getElementById('cheapest-chip');
+
   if (state.filtered.length === 0) {
+    chip.style.display = 'none';
     el.innerHTML = `<div class="empty-state">
       <div style="width:48px;height:48px;margin:0 auto 16px;color:var(--color-text-faint);">
         <i data-lucide="fuel" style="width:48px;height:48px;"></i>
@@ -1080,6 +1093,18 @@ function renderList() {
   const activeFuels = getActiveFuels();
   const allBestPrices = state.filtered.map(s => getBestPrice(s)).filter(Boolean);
   const minPrice = allBestPrices.length ? Math.min(...allBestPrices) : 999;
+
+  // Cheapest station overall — clicking it locates it on the map
+  const cheapest = state.filtered.find(s => getBestPrice(s) === minPrice);
+  if (cheapest) {
+    const cheapestFuel = getBestFuel(cheapest);
+    const cheapestName = cheapest.brand || cheapest.name || 'Station';
+    chip.style.display = 'flex';
+    chip.innerHTML = `⭐ ${minPrice.toFixed(3)} €${cheapestFuel ? ' · '+cheapestFuel : ''} — ${escHtml(cheapestName)}`;
+    chip.onclick = () => selectStation(cheapest.id);
+  } else {
+    chip.style.display = 'none';
+  }
 
   el.innerHTML = state.filtered.map((s, i) => {
     const price = getBestPrice(s);
@@ -1888,8 +1913,19 @@ lucide.createIcons();
 setUserMarker(state.userLat, state.userLng);
 // Start live position tracking on page load
 if (navigator.geolocation) {
-  startGeoWatch();
+  setApiStatus('warn', 'Recherche de votre position…');
+  startGeoWatch(
+    () => {}, // first fix succeeded — applyPosition() already recentres the map and loads stations
+    (err) => {
+      const msg = err.code === err.PERMISSION_DENIED
+        ? 'Position refusée — affichage par défaut (Paris). Autorisez la localisation puis cliquez sur « Ma position ».'
+        : 'Position indisponible — affichage par défaut (Paris). Cliquez sur « Ma position » pour réessayer.';
+      setApiStatus('warn', msg);
+      loadStations();
+    }
+  );
 } else {
+  setApiStatus('warn', 'Géolocalisation non supportée — affichage par défaut (Paris).');
   loadStations();
 }
 
